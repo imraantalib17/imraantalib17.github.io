@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrome Color Viewer</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .color-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+
+        .color-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .swatch {
+            height: 80px;
+            width: 100%;
+            border-bottom: 1px solid #eee;
+        }
+
+        .color-info {
+            padding: 10px;
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Tooltip style for copy feedback */
+        .copy-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Chrome Color Viewer</h1>
+    <p>Click any color to copy the hex code</p>
+</header>
+
+<div class="color-grid" id="colorGrid">
+    </div>
+
+<div id="toast" class="copy-hint">Copied to clipboard!</div>
+
+<script>
+    // Data extracted from chromecolors.txt 
+    const hexCodes = [
+        "#00000000", "#0000001f", "#0000003d", "#0000004d", "#00000099", "#000000ff", "#001d35ff", "#002238ff", 
+        "#002845ff", "#003355ff", "#003f66ff", "#004a77ff", "#005789ff", "#005cc8ff", "#00639bff", "#0066ccff", 
+        "#0075ffff", "#0078d4ff", "#041e49ff", "#047db7ff", "#062e6f2e", "#062e6f8c", "#062e6fff", "#072711ff", 
+        "#073888ff", "#0842a0ff", "#0a3818ff", "#0b57d020", "#0b57d0ff", "#0d50bbff", "#0e0e0fff", "#0f5223ff", 
+        "#101010ff", "#131314ff", "#146c2eff", "#161818ff", "#185abcff", "#188038ff", "#191d1cff", "#198639ff", 
+        "#1b6ef3ff", "#1ea446ff", "#1f1f1f0f", "#1f1f1f14", "#1f1f1f1e", "#1f1f1f60", "#1f1f1fff", "#1f2020ff", 
+        "#2021242b", "#20212453", "#202124b5", "#202124db", "#202124e6", "#202124ff", "#232726ff", "#282828ff", 
+        "#2a2a2aff", "#2d312fff", "#303030ff", "#343535ff", "#3793ffff", "#37be5fff", "#383838ff", "#393939ff", 
+        "#3998d3ff", "#3c3c3cff", "#3c40431a", "#3c404326", "#3c404333", "#3c40433d", "#3c404340", "#3c40434d", 
+        "#3c404366", "#3c4043ff", "#393939ff", "#410e0bff", "#444746ff", "#47474761", "#474747ff", "#4c8df6ff", 
+        "#4f4f4f80", "#4f4f4fff", "#5a3f0ff", "#5ab3f0ff", "#5c5f5eff", "#5e5e5eff", "#5f6368ff", "#601410ff", 
+        "#62626260", "#626262ff", "#636363ff", "#6991d6ff", "#6d6d6dff", "#6dd58cff", "#747775ff", "#757575ff", 
+        "#7676764d", "#76767680", "#767676ff", "#7cacf852", "#7cacf8ff", "#7fcfffff", "#80868bff", "#8b8b8bff", 
+        "#8d8d8d80", "#8d8d8dff", "#8e918fff", "#8c1d18ff", "#8f8f8fff", "#9aa0a6ff", "#a0a0a0ff", "#a8c7faff", 
+        "#a9a9a933", "#a9acaaff", "#abababff", "#b060000f", "#b060001a", "#b060004d", "#b0600061", "#b06000ff", 
+        "#b2b2b2ff", "#b3261eff", "#bdbdbe61", "#bdbdbeff", "#c2e7ffff", "#c4c7c5ff", "#c4eed0ff", "#c7c7c7ff", 
+        "#c8c8c8ff", "#c8d7f0ff", "#cbcbcbff", "#d3e3fdff", "#d5d5d5ff", "#d930250f", "#d93025ff", "#dadadaff", 
+        "#dadce0ff", "#dc362eff", "#dde3e9ff", "#e1e3e1ff", "#e1e6edff", "#e3e3e3ff", "#e46962ff", "#e5e5e5ff", 
+        "#e6e6e6ff", "#e7f8edff", "#e8f0feff", "#e9d3b8ff", "#e9e8e8ff", "#eaf0f9ff", "#ec928eff", "#ecdac3ff", 
+        "#ecf3feff", "#edf2faff", "#eff2efff", "#eff3faff", "#efededff", "#efefef4d", "#efefefff", "#f0f0f0ff", 
+        "#f29900ff", "#f2b8b5ff", "#f2f2f2ff", "#f2ffeeff", "#f3f6fcff", "#f4e8daff", "#f4f3f2ff", "#f5f5f5ff", 
+        "#f7fcffff", "#f8fafdff", "#f9dedcff", "#faf9f8ff", "#fafbffff", "#fafdfbff", "#fa7b17ff", "#fceeeeff", 
+        "#fcfcfcff", "#fdfcfb1a", "#fdfcfb29", "#fdfcfbff", "#ff000030", "#ff0000ff", "#ffffff47", "#ffffff6e", 
+        "#ffffff99", "#ffffff9a", "#ffffffb5", "#fffbf9ff", "#ffffffff"
+    ];
+
+    const grid = document.getElementById('colorGrid');
+    const toast = document.getElementById('toast');
+
+    hexCodes.forEach(color => {
+        const card = document.createElement('div');
+        card.className = 'color-card';
+        
+        // Handle transparency display (8-digit hex) 
+        card.innerHTML = `
+            <div class="swatch" style="background-color: ${color}"></div>
+            <div class="color-info">${color}</div>
+        `;
+
+        card.addEventListener('click', () => {
+            navigator.clipboard.writeText(color);
+            showToast(`Copied: ${color}`);
+        });
+
+        grid.appendChild(card);
+    });
+
+    function showToast(message) {
+        toast.textContent = message;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2000);
+    }
+</script>
+
+</body>
+</html>
